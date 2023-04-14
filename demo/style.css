@@ -1,0 +1,69 @@
+:root {
+    line-height: 1.5;
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.5rem;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -webkit-font-kerning: normal;
+    font-kerning: normal;
+    color: #FCEFE2;
+    background-color: #262422;
+    box-sizing: border-box;
+}
+html {
+    scroll-behavior: smooth;
+}
+#Flaxo {
+    width: 37em;
+    height: calc(100vh - 4em);
+    margin: 2em auto;
+    position: relative;
+}
+.FlaxoBody {
+    overflow-y: scroll;
+    scrollbar-color: #5a5a59 #282625;
+    height: 100%;
+    width: 35em;
+    padding-right: 2em;
+}
+.FlaxoInput {
+    outline: 0;
+    border: 0;
+    min-width: 20px;
+    color: green;
+    font-style: italic;
+    vertical-align: bottom;
+}
+.FlaxoPicture {
+    width: 35em;
+    padding: 0;
+    background-color: purple;
+    border: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.FlaxoCanvas {
+    position: absolute;
+    width: 100%;
+    border: 0;
+    padding: 0;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #282625;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #5a5a59;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #717170;
+}
