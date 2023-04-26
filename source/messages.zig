@@ -1,73 +1,46 @@
-const Bytes = @import("bytes.zig").Bytes;
-const io = @import("io.zig");
+const Bytes = @import("Bytes.zig");
+const BufferedWriter = @import("BufferedWriter.zig");
+const Header = @import("Header.zig");
 
-extern fn console_log(value: usize) void;
+var message_table: [9000][]u8 = undefined;
+var num_messages: u16 = 0;
+var num_abbreviations: u16 = 0;
 
-var message_table: [10000][]u8 = undefined;
-var abbreviations: [162][16]u8 = undefined;
-var num_messages: u16 = undefined;
-var num_abbreviations: u16 = undefined;
-var data: Bytes = undefined;
-var version: u8 = undefined;
+pub var print: fn (u16, *BufferedWriter) void = undefined;
 
-pub fn init(_version: u8, bytes: Bytes) void {
-    @memset(@ptrCast([*]u8, &abbreviations), 0, 162 * 16);
-    //mem.set(u8, @ptrCast([*]u8, &abbreviations), 0);
-    version = _version;
-    data = bytes;
-    var pos: u16 = data.getShort(2);
-    if (version == 2) pos -= 1;
-    num_abbreviations = buildTable(pos, 0);
-    pos = data.getShort(0);
-    num_messages = buildTable(pos, num_abbreviations);
+pub fn init(header: Header) void {
+    num_abbreviations = buildTable(0, header.abbr_table);
+    num_messages = buildTable(num_abbreviations, header.message_table);
+    print = if (header.version == 1) printV1 else printV2;
 }
 
-fn buildTable(start_pos: u16, table_start: u16) u16 {
-    var pos = start_pos;
-    var table_pos = table_start;
-    while (data.getByte(pos) != 2) : ({
-        table_pos += 1;
-        pos += 1;
-    }) {
-        var start = pos;
-        while (data.getByte(pos) > 2) : (pos += 1) {}
-        message_table[table_pos] = data.data[start..pos];
+fn buildTable(table_start: u16, data: []u8) u16 {
+    var table = Bytes.init(data);
+    var table_entry = table_start;
+    while (table.peek(u8) != 2) : (table_entry += 1) {
+        const start = table.pos;
+        while (table.read(u8) > 2) {}
+        message_table[table_entry] = table.data[start..table.pos];
     }
-    return table_pos;
+    return table_entry;
 }
 
-fn printMessage(message: u16, buffer: [*]u8, start_pos: u16) u16 {
-    var ptr = start_pos;
+fn printMessage(message: u16, writer: *BufferedWriter) void {
     for (message_table[message]) |c| {
-        if (c >= 0x5E) {
-            var abbr = abbreviations[c - 0x5E];
-            if (abbr[0] == 0) _ = printMessage(c - 0x5E, &abbr, 0);
-            var abbr_pos: u8 = 0;
-            while (abbr[abbr_pos] > 0) {
-                buffer[ptr + abbr_pos] = abbr[abbr_pos];
-                abbr_pos += 1;
-            }
-            ptr += abbr_pos;
-        } else {
-            switch (c) {
-                0...2 => break,
-                8 => buffer[ptr] = '\n',
-                0x42 => buffer[ptr] = ' ',
-                else => buffer[ptr] = c + 0x1D,
-            }
-            ptr += 1;
+        switch (c) {
+            0...2 => break,
+            8 => writer.writeChar('\n'),
+            0x42 => writer.writeChar(' '),
+            0x5E...0xFF => printMessage(c - 0x5E, writer),
+            else => writer.writeChar(c + 0x1D),
         }
     }
-    buffer[ptr] = 0;
-    return ptr;
 }
 
-pub fn print(n: u16) void {
-    var message = n;
-    if (version == 2) {
-        if (message == 0) return;
-        message -= 1;
-    }
-    io.extend(printMessage(message + num_abbreviations, &io.output_buffer, io.len));
-    io.flush();
+pub fn printV1(n: u16, writer: *BufferedWriter) void {
+    printMessage(n + num_abbreviations, writer);
+}
+
+pub fn printV2(n: u16, writer: *BufferedWriter) void {
+    if (n > 0) printMessage(n + num_abbreviations - 1, writer);
 }

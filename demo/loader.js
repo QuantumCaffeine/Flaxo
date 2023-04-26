@@ -40,6 +40,7 @@ let imports = {
         },
         read_input: async (ptr, len, callback) => {
             let command = (await getInput()).trim()
+            command = command.replace(/&nbsp;/g, '');
             new TextEncoder().encodeInto(command, mem.subarray(ptr, ptr + len))
             backend.__indirect_function_table.get(callback)(command.length)
         },
@@ -55,10 +56,17 @@ let imports = {
                 .then(result => result.arrayBuffer())
                 .then(buffer => new Uint8Array(buffer))
             mem.set(gameData, address)
-            backend.__indirect_function_table.get(callback)();
+            backend.__indirect_function_table.get(callback)(gameData.length);
         },
         console_log: (value) => {
             console.log('Success', value);
+        },
+        log_char: (char) => {
+            console.log('Char', String.fromCharCode(char));
+        },
+        log_message: (ptr, len) => {
+            let message = new TextDecoder().decode(mem.subarray(ptr, ptr + len))
+            console.log(message);
         }
     }
 }
@@ -67,7 +75,7 @@ export async function loadL9(file, version, screen, pictureFolder, skipIntro = f
     display = screen
     gameFile = file
     backend = (await WebAssembly.instantiateStreaming(
-                        fetch("./flaxo.wasm"), 
+                        fetch("./l9.wasm"), 
                         imports
                     )).instance.exports
     mem = new Uint8Array(backend.memory.buffer);

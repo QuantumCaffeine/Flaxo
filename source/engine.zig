@@ -1,19 +1,96 @@
-const game = @import("game.zig");
-const messages = @import("messages.zig");
-const static_memory = @import("static_memory.zig");
-const io = @import("io.zig");
-const state = @import("state.zig");
-extern fn console_log(value: usize) void;
 
-fn StackOf(comptime T: type) type {
+const Bytes = @import("Bytes.zig");
+const Exit = @import("exits.zig").Exit;
+const l9 = @import("l9.zig");
+const io = @import("io.zig");
+const js = @import("js.zig");
+const Header = @import("Header.zig");
+
+var code: Bytes = undefined;
+var vars:[*]u16 = &l9.state.vars;
+var call_stack: StackOf(u16, 400) = .{};
+
+const ExecutionState = enum {
+    Running,
+    GetInput,
+    GetCharInput,
+    LoadGame,
+    Save,
+    Restore,
+    Stopped
+};
+
+const StandardOpcode = packed struct {
+//const StandardOpcode = packed struct(u8) {
+    value: u5,
+    rel_addr: bool,
+    byte_const: bool,
+    is_list: bool
+};
+
+const ListOpcode = packed struct {
+//const ListOpcode = packed struct(u8) {
+    list_num: u5,
+    opcode: u2,
+    is_list: bool
+};
+
+pub fn init(header: Header) void {
+    code = Bytes.init(header.code);
+}
+
+pub fn run() void {
+    var exec_state = ExecutionState.Running;
+    while (true) {
+        exec_state = switch (exec_state) {
+            .Running => execute(),
+            .GetInput => await async get_input(),
+            .GetCharInput => get_char_input(),
+            .LoadGame => blk: {
+                const part = l9.state.lists[9][1];
+                var frame: @Frame(load_part) = async load_part(part);
+                await frame;
+                break :blk .Running;
+            },
+            .Save => .Stopped,
+            .Stopped => return,
+            .Restore => .Stopped,
+        };
+    }
+}
+
+fn load_part(part: u8) void {
+    var frame: @Frame(l9.load) = async l9.load(part);
+    await frame;
+}
+
+fn get_input() ExecutionState {
+    io.output.flush();
+    var result: [4]u8 = [_]u8{0} ** 4;
+    var word_no: u8 = 0;
+    while (word_no < 3) : (word_no += 1) {
+        const word = await async l9.parser.readWord();
+        if (word) |value| {
+            result[word_no] = value;
+        } else break;
+    }
+    result[3] = word_no;
+    for (result) |entry| {
+        const variable = code.read(u8);
+        vars[variable] = entry;
+    }
+    return .Running;
+}
+
+fn get_char_input() ExecutionState {
+    return .Stopped;
+}
+
+fn StackOf(comptime T: type, comptime size: u16) type {
     return struct {
         const Self = @This();
-        stack: [*]T,
+        stack: [size]T = undefined,
         pos: u16 = 0,
-
-        fn init(data: [*]T) Self {
-            return Self{ .stack = data };
-        }
 
         fn push(self: *Self, value: T) void {
             self.stack[self.pos] = value;
@@ -31,180 +108,205 @@ fn StackOf(comptime T: type) type {
     };
 }
 
-const Address = [*]u8;
 
-fn get_input() bool {
-    return false;
+fn readConstant(byte_const: bool) u16 {
+    return if (byte_const) code.read(u8) else code.read(u16);
 }
 
-const Code = struct {
-    pc: Address,
-    call_stack: StackOf(Address) = StackOf(Address).init(&static_memory.call_stack_data),
+fn readVariable() u16 {
+    const variable = code.read(u8);
+    return vars[variable];
+}
 
-    fn readByte(self: *Code) u8 {
-        const result = self.pc[0];
-        self.pc += 1;
-        return result;
-    }
+fn jump(address: u16) void {
+    code.seek(address);
+}
 
-    fn readShort(self: *Code) u16 {
-        const result = self.pc[0] | (@as(u16, self.pc[1]) << 8);
-        self.pc += 2;
-        return result;
-    }
+fn jumpIf(condition: bool, address: u16) void {
+    if (condition) jump(address);
+}
 
-    fn readConstant(self: *Code, byte_const: bool) u16 {
-        return if (byte_const) self.readByte() else self.readShort();
-    }
+fn call(address: u16) void {
+    call_stack.push(code.pos);
+    jump(address);
+}
 
-    fn readAddress(self: *Code, relative: bool) Address {
-        if (relative) {
-            const offset = self.readByte();
-            return if (offset > 127) self.pc + offset - 257 else self.pc + offset - 1;
-        } else {
-            return game.code_start + self.readShort();
+fn ret() void {
+    code.seek(call_stack.pop());
+}
+
+fn readAddress(relative: bool) u16 {
+    if (relative) {
+        const offset = @as(i16, code.read(i8));
+        return code.pos +% @bitCast(u16, offset) - 1;
+    } else return code.read(u16);
+}
+
+fn readTableAddress(table_start: u16, offset: u16) u16 {
+    const table_entry = code.getPtr(u16, table_start)[offset];
+    return table_entry;
+}
+
+fn handle_input(input_length: u16) void {
+    io.log.write(input_length);
+}
+
+fn execute() ExecutionState {
+    var in1:u16 = 0;
+    var in2:u16 = 0;
+    var out1:u8 = 0;
+    var out2:u8 = 0;
+    var address:u16 = 0;
+
+    while (true) {
+        const opcode = code.read(StandardOpcode);
+
+        if (opcode.is_list) {
+            executeListOpcode(@bitCast(ListOpcode, opcode));
+            continue;
         }
-    }
 
-    fn readVar(self: *Code) u16 {
-        const variable = self.readByte();
-        return state.vars[variable];
-    }
-
-    fn storeInVar(self: *Code, value: u16) void {
-        const variable = self.readByte();
-        state.vars[variable] = value;
-    }
-
-    fn incVarBy(self: *Code, value: u16) void {
-        const variable = self.readByte();
-        state.vars[variable] += value;
-    }
-
-    fn decVarBy(self: *Code, value: u16) void {
-        const variable = self.readByte();
-        state.vars[variable] -= value;
-    }
-
-    fn storeExit(self: *Code, exit: game.Exit) void {
-        self.storeInVar(exit.flags);
-        self.storeInVar(exit.room);
-    }
-
-    fn jump(self: *Code, condition: bool, relative: bool) void {
-        const addr = self.readAddress(relative);
-        if (condition) self.pc = addr;
-    }
-
-    fn call(self: *Code, relative: bool) void {
-        const addr = self.readAddress(relative);
-        self.call_stack.push(self.pc);
-        self.pc = addr;
-    }
-
-    fn ret(self: *Code) void {
-        self.pc = self.call_stack.pop();
-    }
-};
-
-const Arguments = struct { arg1: u16 = 0, arg2: u16 = 0 };
-const Opcode = packed struct(u8) { value: u5, rel_addr: bool, byte_const: bool, is_list: bool };
-const ListOpcode = packed struct(u8) { list_num: u5, opcode: u2, is_list: bool };
-
-pub const Engine = struct {
-    code: Code,
-    running: bool = true,
-
-    pub fn init(start: [*]u8) Engine {
-        return Engine{ .code = Code{ .pc = start } };
-    }
-
-    pub fn run(self: *Engine) void {
-        while (self.running) {
-            const opcode = @bitCast(Opcode, self.code.readByte());
-            if (opcode.is_list) {
-                const args = Arguments{ .arg1 = self.code.readByte(), .arg2 = self.code.readByte() };
-                Engine.executeListOpcode(@bitCast(ListOpcode, opcode), args);
-            } else {
-                const args = self.readArgs(opcode);
-                self.executeOpcode(opcode, args);
-            }
-        }
-    }
-
-    fn readArgs(self: *Engine, opcode: Opcode) Arguments {
-        return switch (opcode.value) {
-            0x03, 0x04, 0x09, 0x0A, 0x0B => .{ .arg1 = self.code.readVar() },
-            0x05, 0x08 => .{ .arg1 = self.code.readConstant(opcode.byte_const) },
-            0x10, 0x11, 0x12, 0x13 => .{ .arg1 = self.code.readVar(), .arg2 = self.code.readVar() },
-            0x18, 0x19, 0x1A, 0x1B => .{ .arg1 = self.code.readVar(), .arg2 = self.code.readConstant(opcode.byte_const) },
-            0x0F => .{ .arg1 = self.code.readByte(), .arg2 = self.code.readByte() },
-            else => .{},
-        };
-    }
-
-    fn executeOpcode(self: *Engine, opcode: Opcode, args: Arguments) void {
         switch (opcode.value) {
-            0x00 => self.code.jump(true, opcode.rel_addr),
-            0x01 => self.code.call(opcode.rel_addr),
-            0x02 => self.code.ret(),
-            0x03 => io.printNumber(args.arg1),
-            0x04, 0x05 => messages.print(args.arg1),
-            0x06 => self.extended(),
-            0x07 => self.running = get_input(),
-            0x08, 0x09 => self.code.storeInVar(args.arg1),
-            0x0A => self.code.incVarBy(args.arg1),
-            0x0B => self.code.decVarBy(args.arg1),
-            0x0F => self.code.storeExit(game.exits[args.arg1][args.arg2]),
-            0x10, 0x18 => self.code.jump(args.arg1 == args.arg2, opcode.rel_addr),
-            0x11, 0x19 => self.code.jump(args.arg1 != args.arg2, opcode.rel_addr),
-            0x12, 0x1A => self.code.jump(args.arg1 < args.arg2, opcode.rel_addr),
-            0x13, 0x1B => self.code.jump(args.arg1 > args.arg2, opcode.rel_addr),
-            else => illegal(opcode.value),
+            0x00, 0x01 => {
+                address = readAddress(opcode.rel_addr);
+            },
+            0x03, 0x04, 0x09, 0x0A, 0x0B => { 
+                in1 = readVariable(); 
+            },
+            0x05, 0x08 => {
+                in1 = readConstant(opcode.byte_const); 
+            },
+            0x10...0x13 => {
+                in1 = readVariable();
+                in2 = readVariable();
+                address = readAddress(opcode.rel_addr);
+            },
+            0x18...0x1B => {
+                in1 = readVariable();
+                in2 = readConstant(opcode.byte_const);
+                address = readAddress(opcode.rel_addr);
+            },
+            0x0E => {
+                in1 = readConstant(opcode.byte_const);
+                in2 = readVariable();
+                address = readTableAddress(in1, in2);
+            },
+            0x0F => {
+                in1 = readVariable();
+                in2 = readVariable();
+                out1 = code.read(u8);
+                out2 = code.read(u8);
+            },
+            else => {}
+        }
+
+        switch(opcode.value) {
+            0x08...0x0B => {
+                out1 = code.read(u8);
+            },
+            else => {}
+        }
+
+        switch (opcode.value) {
+            0x00, 0x0E => jump(address),
+            0x01 => call(address),
+            0x02 => ret(),
+            0x03 => io.output.writeNumber(in1),
+            0x04, 0x05 => l9.messages.print(in1, &io.output),
+            0x06 => if (executeExtendedOpcode()) |new_state| return new_state,
+            0x07 => return .GetInput,
+            0x08, 0x09 => vars[out1] = in1,
+            0x0A => vars[out1] += in1,
+            0x0B => vars[out1] -= in1,
+            0x0F => {
+                const exit = l9.exits.get(in1, in2);
+                vars[out1] = exit.flags;
+                vars[out2] = exit.room;
+            },
+            0x10, 0x18 => jumpIf(in1 == in2, address),
+            0x11, 0x19 => jumpIf(in1 != in2, address),
+            0x12, 0x1A => jumpIf(in1 < in2, address),
+            0x13, 0x1B => jumpIf(in1 > in2, address),
+            else => return illegal(opcode.value),
         }
     }
+}
 
-    fn executeListOpcode(opcode: ListOpcode, args: Arguments) void {
-        const list = game.lists[opcode.list_num];
-        switch (opcode.opcode) {
-            0 => list[args.arg1] = state.vars[args.arg2],
-            1 => state.vars[args.arg2] = list[state.vars[args.arg1]],
-            2 => state.vars[args.arg2] = list[args.arg1],
-            3 => list[state.vars[args.arg1]] = state.vars[args.arg2],
-        }
+fn executeListOpcode(opcode: ListOpcode) void {
+    const in1 = code.read(u8);
+    const in2 = code.read(u8);
+    const list = l9.state.lists[opcode.list_num];
+    switch (opcode.opcode) {
+        0 => list[in1] = @truncate(u8, vars[in2]),
+        1 => vars[in2] = list[vars[in1]],
+        2 => vars[in2] = list[in1],
+        3 => list[vars[in1]] = @truncate(u8, vars[in2]),
     }
+}
 
-    fn extended(self: *Engine) void {
-        const opcode = self.code.readByte();
-        switch (opcode) {
-            0x01 => driver(),
-            0x02 => self.code.storeInVar(42),
-            0x03 => save(),
-            0x04 => restore(),
-            0x05 => state.clearVars(),
-            0x06 => self.code.call_stack.clear(),
-            0xFA => printString(),
-            else => illegal(opcode),
-        }
+fn executeExtendedOpcode() ?ExecutionState {
+    const opcode = code.read(u8);
+    switch (opcode) {
+        0x01 => {
+            const result = driver();
+            if (result != .Running) return result;
+        },
+        0x02 => {
+            const variable = code.read(u8);
+            vars[variable] = 42;
+        },
+        0x03 => return .Save,
+        0x04 => return .Restore,
+        0x05 => l9.state.clearVars(),
+        0x06 => call_stack.clear(),
+        0xFA => printString(),
+        else => return illegal(opcode),
     }
-};
-
-fn driver() void {
-    console_log(200);
+    return null;
 }
 
-fn save() void {
-    console_log(201);
+fn driver() ExecutionState {
+    const list = l9.state.lists[9];
+    const opcode = list[0];
+    const arg = list[1];
+    switch (opcode) {
+        0x01 => io.log.write(arg),
+        0x03 => return .GetCharInput,
+        0x0B => return .LoadGame,
+        0x0C => list[1] = l9_random(),
+        0x0E => list[1] = 0, //driver14
+        0x16 => ram_save(arg),
+        0x17 => ram_restore(arg),
+        0x19, 0x20 => show_bitmap(),
+        0x22 => {
+            list[1] = 0;
+            list[2] = 0;
+        }, //checkfordisc
+        else => {},
+    }
+    return .Running;
 }
 
-fn restore() void {
-    console_log(202);
+fn l9_random() u8 {
+    return 7;
 }
+
+fn ram_save(slot: u16) void {
+    _ = slot;
+}
+
+fn ram_restore(slot: u16) void {
+    _ = slot;
+}
+
+fn show_bitmap() void {}
 
 fn printString() void {
-    console_log(205);
+    io.log.write(205);
 }
 
-fn illegal(value: u8) void {
-    console_log(value);
+fn illegal(value: u8) ExecutionState {
+    io.log.write(99);
+    io.log.write(value);
+    return .Stopped;
 }
