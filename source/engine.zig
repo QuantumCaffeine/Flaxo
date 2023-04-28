@@ -227,6 +227,17 @@ fn execute() ExecutionState {
             0x11, 0x19 => jumpIf(in1 != in2, address),
             0x12, 0x1A => jumpIf(in1 < in2, address),
             0x13, 0x1B => jumpIf(in1 > in2, address),
+            0x14 => {
+                in1 = code.read(u8);
+                if (in1 > 0) in2 = code.read(u8);   //toggle image
+            },
+            0x15 => {
+                in1 = code.read(u8); //clear image
+            },
+            0x16 => {
+                in1 = code.read(u8); //draw image
+            },
+            0x1C => {}, //print input
             else => return illegal(opcode.value),
         }
     }
