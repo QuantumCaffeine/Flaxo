@@ -9,6 +9,7 @@ pub const exits = @import("exits.zig");
 pub const state = @import("state.zig");
 pub const engine = @import("engine.zig");
 pub const parser = @import("parser.zig");
+const dictionary = @import("dictionary.zig");
 
 export fn start(in_version:u8) void {
     version = in_version;
@@ -29,4 +30,9 @@ pub fn load(part:u8) void {
     state.init(header);
     engine.init(header);
     parser.init(header);
+    // var test_message: u16 = 0;
+    // while (test_message < 4398) : (test_message += 1) {
+    //     messages.printMessageV3(test_message, &io.output);
+    //     io.output.flush();
+    // }
 }

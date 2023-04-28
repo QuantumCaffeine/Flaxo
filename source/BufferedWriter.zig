@@ -20,8 +20,8 @@ pub fn writeString(self: *BufferedWriter, string: []u8) void {
     self.flushIfOverfull(self.pos + string.len);
     for (string) |char, i| {
         self.buffer[self.pos + i] = char;
-        self.pos += string.len;
     }
+    self.pos += string.len;
 }
 
 pub fn writeNumber(self: *BufferedWriter, n: u16) void {

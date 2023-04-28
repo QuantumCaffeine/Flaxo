@@ -47,7 +47,7 @@ pub fn run() void {
             .GetInput => await async get_input(),
             .GetCharInput => get_char_input(),
             .LoadGame => blk: {
-                const part = l9.state.lists[9][1];
+                const part = l9.state.lists[8][1];
                 var frame: @Frame(load_part) = async load_part(part);
                 await frame;
                 break :blk .Running;
@@ -83,7 +83,7 @@ fn get_input() ExecutionState {
 }
 
 fn get_char_input() ExecutionState {
-    return .Stopped;
+    return .Running;
 }
 
 fn StackOf(comptime T: type, comptime size: u16) type {
@@ -165,7 +165,6 @@ fn execute() ExecutionState {
             executeListOpcode(@bitCast(ListOpcode, opcode));
             continue;
         }
-
         switch (opcode.value) {
             0x00, 0x01 => {
                 address = readAddress(opcode.rel_addr);
@@ -246,7 +245,7 @@ fn execute() ExecutionState {
 fn executeListOpcode(opcode: ListOpcode) void {
     const in1 = code.read(u8);
     const in2 = code.read(u8);
-    const list = l9.state.lists[opcode.list_num];
+    const list = l9.state.lists[opcode.list_num - 1];
     switch (opcode.opcode) {
         0 => list[in1] = @truncate(u8, vars[in2]),
         1 => vars[in2] = list[vars[in1]],
@@ -277,7 +276,7 @@ fn executeExtendedOpcode() ?ExecutionState {
 }
 
 fn driver() ExecutionState {
-    const list = l9.state.lists[9];
+    const list = l9.state.lists[8];
     const opcode = list[0];
     const arg = list[1];
     switch (opcode) {

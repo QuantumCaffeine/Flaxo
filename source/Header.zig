@@ -6,9 +6,10 @@ version: u8,
 data: []u8,
 exit_table: []u8,
 code: []u8,
-list_table: [10]u16,
+list_table: [9]u16,
 abbr_table: []u8 = undefined,
-message_table: []u8 = undefined,
+message_table: []u8,
+word_table: []u8 = undefined,
 dictionary: []u8 = undefined,
 
 //Size: 0x20
@@ -17,32 +18,28 @@ const HeaderV1 = packed struct {
     abbr_table: u16, //0x470E
     exit_table: u16, //0x0020
     dictionary_start: u16, //0x02D4
-    dictionary_end: u16, //0x0B5C Seems to be 0x50 too low?
-    lists: [8]u16,
+    lists: [9]u16, // First one seems to be 0x50 below end of dictionary table
     code_start: u16, //0x491C
     file_length: u16, //0x5EB9
     checksum: u16, //0xA9DA Seems to be an 11-bit checksum
 };
 
-//44-bytes header
-const HeaderV4 = packed struct {
+//44-byte header
+const HeaderV3 = packed struct {
     file_length: u16,
-    message_table_start: u16,
+    message_table: u16,
     message_table_length: u16,
     dictionary_start: u16,
     dictionary_length: u16,
-    padding: u32,
+    padding1: u32, //Guessing this is table for manual protection
     word_table: u16,
-    padding: u16, //Seems to be 0 in Lancelot
+    padding2: u16, //Seems to be 0
     exit_table: u16,
-    lists: [10]u16,
+    padding3: u16, //Seems to be 0
+    lists: [9]u16,
     code_start: u16,
-    padding: u16, //Seems to be 0 in Lancelot
-    //List 0 at 0x14 (dict_end?)
-    //Code offset 40
+    padding4: u16, //Seems to be 0
 };
-
-
 
 pub fn init(version: u8, data: []u8) Header {
     var bytes = Bytes.init(data);
@@ -50,11 +47,10 @@ pub fn init(version: u8, data: []u8) Header {
         var header_data = bytes.get(HeaderV1, 0);
         var abbr_table_start = header_data.abbr_table;
         if (version == 2) abbr_table_start -= 1;
-        //js.console_log(tester[0]);
         return Header{
-            .version = version, //kfhu
+            .version = version, //
             .data = data,
-            .list_table = bytes.get([10]u16, 0x06),
+            .list_table = bytes.get([9]u16, 0x08),
             .abbr_table = data[abbr_table_start..],
             .message_table = data[header_data.message_table..],
             .exit_table = data[header_data.exit_table..],
@@ -62,13 +58,16 @@ pub fn init(version: u8, data: []u8) Header {
             .dictionary = data[header_data.dictionary_start..],
         };
     } else {
+        var header_data = bytes.get(HeaderV3, 0);
         return Header{
-            .version = version,
+            .version = version, //
             .data = data,
-            .list_table = bytes.get([10]u16, 0x0A), //data_u16[0xA .. 0xA + 32],
-            .exit_table = data[bytes.get(u16, 18)..],
-            .code = data[bytes.get(u16, 40)..],
-            .dictionary = data[bytes.get(u16, 18)..],
+            .list_table = bytes.get([9]u16, 0x16),
+            .message_table = data[header_data.message_table..header_data.message_table + header_data.message_table_length],
+            .word_table = data[header_data.word_table..],
+            .exit_table = data[header_data.exit_table..],
+            .code = data[header_data.code_start..],
+            .dictionary = data[header_data.dictionary_start..header_data.dictionary_start + header_data.dictionary_length],
         };
     }
 }

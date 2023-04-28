@@ -29,6 +29,11 @@ pub fn read(self: *Bytes, comptime T: type) T {
     return result;
 }
 
+pub fn readBig(self: *Bytes, comptime T: type) T {
+    const result = self.read(T);
+    return @byteSwap(result);
+}
+
 pub fn peek(self: *Bytes, comptime T: type) T {
     return self.get(T, self.pos);
 }
