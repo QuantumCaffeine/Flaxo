@@ -8,8 +8,9 @@ pub const messages = @import("messages.zig");
 pub const exits = @import("exits.zig");
 pub const state = @import("state.zig");
 pub const engine = @import("engine.zig");
-pub const parser = @import("parser.zig");
-const dictionary = @import("dictionary.zig");
+pub const parserV3 = @import("parserV3.zig");
+pub const parserV1 = @import("parserV1.zig");
+pub const dictionary = @import("dictionary.zig");
 
 export fn start(in_version:u8) void {
     version = in_version;
@@ -29,10 +30,13 @@ pub fn load(part:u8) void {
     exits.init(header);
     state.init(header);
     engine.init(header);
-    parser.init(header);
-    // var test_message: u16 = 0;
-    // while (test_message < 4398) : (test_message += 1) {
-    //     messages.printMessageV3(test_message, &io.output);
-    //     io.output.flush();
-    // }
+    if (version <= 2) parserV1.init(header)
+    else parserV3.init(header);
+
+        // var test_message: u16 = 0;
+        // while (test_message < 4398) : (test_message += 1) {
+        //     messages.printMessageV3(test_message, &io.output);
+        //     io.output.flush();
+        // }
+
 }

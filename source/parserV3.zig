@@ -1,6 +1,6 @@
 const Header = @import("Header.zig");
 const Bytes = @import("Bytes.zig");
-const dictionary = @import("dictionary.zig");
+const dictionary = @import("dictionaryV3.zig");
 const WordType = dictionary.WordType;
 
 var buffer: Bytes = undefined;
@@ -9,7 +9,6 @@ pub var current_word: []u8 = undefined;
 
 pub fn init(header: Header) void {
     dictionary.init(header);
-    skipWord = if (header.version <= 2) skipWordV1 else skipWordV3;
 }
 
 pub fn start(input: []u8) void {
@@ -18,13 +17,13 @@ pub fn start(input: []u8) void {
 }
 
 pub fn readWord() ?WordType {
-        if (getWord()) |word| {
-            current_word = word;
-            return dictionary.lookup(word);
-        } else {
-            empty = true;
-            return null;
-        }
+    if (getWord()) |word| {
+        current_word = word;
+        return dictionary.lookup(word);
+    } else {
+        empty = true;
+        return null;
+    }
 }
 
 fn skipSpace() usize {
@@ -32,18 +31,11 @@ fn skipSpace() usize {
     return buffer.pos;
 }
 
-var skipWord: fn () usize = undefined;
-
-fn skipWordV1() usize {
-    while (!buffer.eof() and buffer.peek(u8) != ' ') buffer.seekBy(1);
-    return buffer.pos;
-}
-
 fn is_punctuation(char: u8) bool {
     return char == '.' or char == ',' or char == ' ';
 }
 
-fn skipWordV3() usize {
+fn skipWord() usize {
     if (!buffer.eof() and is_punctuation(buffer.peek(u8))) {
         buffer.seekBy(1);
     } else {

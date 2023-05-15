@@ -9,6 +9,7 @@ const Header = @import("Header.zig");
 var code: Bytes = undefined;
 var vars:[*]u16 = &l9.state.vars;
 var call_stack: StackOf(u16, 400) = .{};
+var version: u8 = 0;
 
 const ExecutionState = enum {
     Running,
@@ -36,7 +37,9 @@ const ListOpcode = packed struct {
 };
 
 pub fn init(header: Header) void {
+    seed = js.random_bits(32);
     code = Bytes.init(header.code);
+    version = header.version;
 }
 
 pub fn run() void {
@@ -44,7 +47,7 @@ pub fn run() void {
     while (true) {
         exec_state = switch (exec_state) {
             .Running => execute(),
-            .GetInput => await async get_input(),
+            .GetInput => handle_input(),
             .GetCharInput => get_char_input(),
             .LoadGame => blk: {
                 const part = l9.state.lists[8][1];
@@ -59,27 +62,53 @@ pub fn run() void {
     }
 }
 
+fn handle_input() ExecutionState {
+    io.output.flush();
+    const input = await async io.input.read();
+    if (version <= 2) read_inputV1(input)
+    else read_inputV3(input);
+    return .Running;
+}
+
 fn load_part(part: u8) void {
     var frame: @Frame(l9.load) = async l9.load(part);
     await frame;
 }
 
-fn get_input() ExecutionState {
-    io.output.flush();
-    var result: [4]u8 = [_]u8{0} ** 4;
-    var word_no: u8 = 0;
-    while (word_no < 3) : (word_no += 1) {
-        const word = await async l9.parser.readWord();
-        if (word) |value| {
-            result[word_no] = value;
-        } else break;
-    }
-    result[3] = word_no;
-    for (result) |entry| {
+fn read_inputV1(input: []u8) void {
+    var words = l9.parserV1.parseWords(input);
+    for (words) |value| {
         const variable = code.read(u8);
-        vars[variable] = entry;
+        vars[variable] = value;
     }
-    return .Running;
+    const num_words: u8 = @truncate(u8, words.len);
+    code.seekBy(3 - num_words);
+    const variable = code.read(u8);
+    vars[variable] = num_words;
+}
+
+fn read_inputV3(input: []u8) void {
+    l9.parserV3.start(input);
+    read_input_wordV3();
+}
+
+fn read_input_wordV3() void {
+    var list = Bytes.init(l9.state.lists[8]);
+    const word = l9.parserV3.readWord();
+    if (word) |word_type| {
+        switch (word_type) {
+            .Literal => |value| {
+                list.writeBig(u16, value);
+            },
+            .Match => |matches| {
+                for (matches.get()) |match| {
+                    list.writeBig(u16, match);
+                }
+            }
+        }
+    }
+    list.write(u16, 0);
+    code.pos += 4;
 }
 
 fn get_char_input() ExecutionState {
@@ -147,10 +176,6 @@ fn readTableAddress(table_start: u16, offset: u16) u16 {
     return table_entry;
 }
 
-fn handle_input(input_length: u16) void {
-    io.log.write(input_length);
-}
-
 fn execute() ExecutionState {
     var in1:u16 = 0;
     var in2:u16 = 0;
@@ -158,7 +183,8 @@ fn execute() ExecutionState {
     var out2:u8 = 0;
     var address:u16 = 0;
 
-    while (true) {
+    var count: u16 = 0;
+    while (count < 10000) : (count += 1) {
         const opcode = code.read(StandardOpcode);
 
         if (opcode.is_list) {
@@ -205,7 +231,7 @@ fn execute() ExecutionState {
             },
             else => {}
         }
-
+        //io.log.write(opcode.value);
         switch (opcode.value) {
             0x00, 0x0E => jump(address),
             0x01 => call(address),
@@ -213,7 +239,7 @@ fn execute() ExecutionState {
             0x03 => io.output.writeNumber(in1),
             0x04, 0x05 => l9.messages.print(in1, &io.output),
             0x06 => if (executeExtendedOpcode()) |new_state| return new_state,
-            0x07 => return .GetInput,
+            0x07 => if (version <= 2 or l9.parserV3.empty) return .GetInput else read_input_wordV3(),
             0x08, 0x09 => vars[out1] = in1,
             0x0A => vars[out1] += in1,
             0x0B => vars[out1] -= in1,
@@ -228,7 +254,8 @@ fn execute() ExecutionState {
             0x13, 0x1B => jumpIf(in1 > in2, address),
             0x14 => {
                 in1 = code.read(u8);
-                if (in1 > 0) in2 = code.read(u8);   //toggle image
+                if (in1 > 0) in2 = code.read(u8);
+                js.toggle_image(in1, in2);
             },
             0x15 => {
                 in1 = code.read(u8); //clear image
@@ -236,10 +263,15 @@ fn execute() ExecutionState {
             0x16 => {
                 in1 = code.read(u8); //draw image
             },
-            0x1C => {}, //print input
+            0x17 => {
+                io.log.write(299); //Object table
+                return .Stopped;
+            },
+            0x1C => io.output.writeString(l9.parserV3.current_word),
             else => return illegal(opcode.value),
         }
     }
+    return .Stopped;
 }
 
 fn executeListOpcode(opcode: ListOpcode) void {
@@ -254,51 +286,58 @@ fn executeListOpcode(opcode: ListOpcode) void {
     }
 }
 
+var seed: u32 = 42;
+
+fn random() u32 {
+    seed = seed *% 1021 +% 41;
+    return seed;
+}
+
 fn executeExtendedOpcode() ?ExecutionState {
     const opcode = code.read(u8);
     switch (opcode) {
-        0x01 => {
+        0x01 => {//If V1, stop game.
             const result = driver();
             if (result != .Running) return result;
         },
         0x02 => {
             const variable = code.read(u8);
-            vars[variable] = 42;
+            vars[variable] = @truncate(u8, random());
         },
         0x03 => return .Save,
         0x04 => return .Restore,
         0x05 => l9.state.clearVars(),
         0x06 => call_stack.clear(),
-        0xFA => printString(),
+        0xFA => io.output.writeString(code.readString()),
         else => return illegal(opcode),
     }
     return null;
 }
 
 fn driver() ExecutionState {
-    const list = l9.state.lists[8];
-    const opcode = list[0];
-    const arg = list[1];
+    var list = Bytes.init(l9.state.lists[8]);
+    const opcode = list.read(u8);
+    const arg = list.peek(u8);
     switch (opcode) {
-        0x01 => io.log.write(arg),
         0x03 => return .GetCharInput,
-        0x0B => return .LoadGame,
-        0x0C => list[1] = l9_random(),
-        0x0E => list[1] = 0, //driver14
+        0x0B => return .LoadGame, //If arg is zero, ask user for file name?
+        0x0C => list.write(u16, @truncate(u16, random()>>16)),
+        0x0E => list.write(u8, 0), // driver call 14
         0x16 => ram_save(arg),
         0x17 => ram_restore(arg),
-        0x19, 0x20 => show_bitmap(),
-        0x22 => {
-            list[1] = 0;
-            list[2] = 0;
-        }, //checkfordisc
+        0x19 => lenslok_display(&list),
+        0x20 => show_bitmap(&list),
+        0x22 => list.write(u16, 0), //checkfordisc
         else => {},
     }
     return .Running;
 }
 
-fn l9_random() u8 {
-    return 7;
+fn lenslok_display(list: *Bytes) void {
+    io.output.writeString("\nLenslok code is ");
+    io.output.writeChar(list.read(u8));
+    io.output.writeChar(list.read(u8));
+    io.output.writeChar('\n');
 }
 
 fn ram_save(slot: u16) void {
@@ -309,10 +348,11 @@ fn ram_restore(slot: u16) void {
     _ = slot;
 }
 
-fn show_bitmap() void {}
-
-fn printString() void {
-    io.log.write(205);
+fn show_bitmap(list: *Bytes) void {
+    const pic = list.readBig(u16);
+    const x = list.readBig(u16);
+    const y = list.readBig(u16);
+    js.display_bitmap(pic, x, y);
 }
 
 fn illegal(value: u8) ExecutionState {

@@ -1,6 +1,7 @@
 const Bytes = @import("Bytes.zig");
 const Header = @This();
 const js = @import("js.zig");
+const io = @import("io.zig");
 
 version: u8,
 data: []u8,
@@ -59,6 +60,7 @@ pub fn init(version: u8, data: []u8) Header {
         };
     } else {
         var header_data = bytes.get(HeaderV3, 0);
+        io.log.write(header_data.code_start);
         return Header{
             .version = version, //
             .data = data,

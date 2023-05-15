@@ -8,6 +8,9 @@ pub var lists: [32][]u8 = undefined;
 var list_area: [0x800]u8 = undefined;
 
 pub fn init(header: Header) void {
+    for (list_area) |*byte| {
+        byte.* = 0;
+    }
     for (header.list_table) |pos, n| {
         //js.console_log(pos);
         //js.console_log(n);

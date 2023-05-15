@@ -15,8 +15,18 @@ pub fn getSlice(self: Bytes, start: usize, end: usize) []u8 {
     return self.data[start..end];
 }
 
+pub fn readSlice(self: *Bytes, length: u16) []u8 {
+    const slice = self.data[self.pos..self.pos+length];
+    self.pos += length;
+    return slice;
+}
+
 pub fn get(self: Bytes, comptime T: type, pos: u16) T {
     return self.getPtr(T, pos)[0];
+}
+
+pub fn getBig(self: Bytes, comptime T: type, pos: u16) T {
+    return @byteSwap(self.get(T, pos));
 }
 
 pub fn set(self: *Bytes, comptime T: type, pos: u16, value: T) void {
@@ -29,9 +39,27 @@ pub fn read(self: *Bytes, comptime T: type) T {
     return result;
 }
 
+pub fn readString(self: *Bytes) []u8 {
+    const start = self.pos;
+    while (self.data[self.pos] != 0) self.pos += 1;
+    const end = self.pos;
+    self.pos += 1;
+    return self.data[start..end];
+}
+
 pub fn readBig(self: *Bytes, comptime T: type) T {
     const result = self.read(T);
     return @byteSwap(result);
+}
+
+pub fn write(self: *Bytes, comptime T: type, value: T) void {
+    self.set(T, self.pos, value);
+    self.pos += @sizeOf(T);
+}
+
+pub fn writeBig(self: *Bytes, comptime T: type, value: T) void {
+    self.set(T, self.pos, @byteSwap(value));
+    self.pos += @sizeOf(T);
 }
 
 pub fn peek(self: *Bytes, comptime T: type) T {

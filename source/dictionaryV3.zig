@@ -4,12 +4,10 @@ const messages = @import("messages.zig");
 const WordList = @import("WordList.zig");
 const MessageWords = @import("MessageWords.zig");
 const InputDictionary = @import("InputDictionary.zig");
-var version: u8 = 0;
 
 pub const WordType = union(enum) {
-    LiteralV3: u8,
-    MatchV3: *List,
-    MatchV1: u8,
+    Literal: u8,
+    Match: *List,
 };
 
 pub const List = struct {
@@ -27,31 +25,13 @@ pub const List = struct {
 };
 
 pub fn init(header: Header) void {
-    version = header.version;
     InputDictionary.init();
-    if (header.version <= 2) buildV1(header.dictionary)
-     else buildV3(header.dictionary);
+    build(header.dictionary);
 }
-
-//// V1
-
-fn buildV1(data: []u8) void {
-    var reader = Bytes.init(data);
-    while (reader.peek(u8) < 0xF0) {
-        const start = reader.pos;
-        while (reader.read(u8) & 0x80 == 0) {}
-        reader.data[reader.pos-1] &= 0x7F;
-        const word = reader.data[start..reader.pos];
-        const value = reader.read(u8);
-        InputDictionary.append(word, value);
-    }
-}
-
-//// V3
 
 var input_matches: [0xF80]List = undefined;
 
-fn buildV3(data: []u8) void {
+fn build(data: []u8) void {
     for (input_matches) |*list| {
         list.size = 0;
     }
@@ -68,13 +48,22 @@ fn buildMatches() void {
     for (messages.message_table) |message, message_no| {
         var message_words = MessageWords.init(message);
         while (message_words.next()) |word_data| {
-            var flags = word_data >> 12;
-            var word = word_data & 0xFFF;
-            if ((word < 0xF80 and flags > 0)) {
-                input_matches[word].append((flags << 13) | @truncate(u12, message_no));
+            if ((word_data.word < 0xF80 and word_data.flags > 0)) {
+                input_matches[word_data.word].append((@as(u16, word_data.flags) << 13) | @truncate(u12, message_no));
             }
         }
     }
+}
+
+pub fn lookup(word: []u8) WordType {
+    if (word.len == 1 and (word[0] == '.' or word[0] == ',')) {
+        return WordType{.Literal = word[0]};
+    }
+    if (InputDictionary.find(word)) |value| {
+        return WordType{.Match = &input_matches[value]};
+    }
+    return if (toInt(word)) |value| WordType{.Literal = value}
+    else WordType{.Literal = 0x80};
 }
 
 fn toInt(word: []u8) ?u8 {
@@ -86,19 +75,4 @@ fn toInt(word: []u8) ?u8 {
     }
     if (number > 255) return null;
     return @truncate(u8, number);
-}
-
-//// Utility
-
-pub fn lookup(word: []u8) WordType {
-    if (word.len == 1 and (word[0] == '.' or word[0] == ',')) {
-        return WordType{.LiteralV3 = word[0]};
-    }
-    if (InputDictionary.find(word)) |value| {
-        if (version > 2) return WordType{.MatchV3 = &input_matches[value]}
-        else return WordType{.MatchV1 = @truncate(u8, value)};
-    }
-    const as_number = toInt(word);
-    return if (as_number) |value| WordType{.LiteralV3 = value}
-    else WordType{.LiteralV3 = 0x80};
 }

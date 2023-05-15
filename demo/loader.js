@@ -35,6 +35,7 @@ let imports = {
     env: {
         output_message: (ptr, len) => {
             let message = new TextDecoder().decode(mem.subarray(ptr, ptr + len))
+            //console.log(message);
             for (let chunk of message.split('\n'))
                 output = addElement('p', 'FlaxoOutput', chunk, display)
         },
@@ -45,13 +46,15 @@ let imports = {
             backend.__indirect_function_table.get(callback)(command.length)
         },
         display_bitmap: (image, x, y) => {
-            console.log(`Display bitmap ${image} at (${x}, ${y})`)
+            console.log(`Display bitmap ${image&0xFFFF} at (${x&0xFFFF}, ${y&0xFFFF})`)
         },
-        toggle_image: (state) => {
-            if (state) console.log("Show image")
+        toggle_image: (state, extra) => {
+            if (state) console.log("Show image", extra)
             else       console.log("Hide image")
         },
         JSLoad: async (file_no, address, callback) => {
+            console.log('Loading part', file_no);
+            gameFile = gameFile.replace('1', file_no);
             let gameData = await fetch(gameFile)
                 .then(result => result.arrayBuffer())
                 .then(buffer => new Uint8Array(buffer))
@@ -67,6 +70,10 @@ let imports = {
         log_message: (ptr, len) => {
             let message = new TextDecoder().decode(mem.subarray(ptr, ptr + len))
             console.log(message);
+        },
+        random_bits: (num_bits) => {
+            const random_number = Math.floor(Math.random()*(2**num_bits));
+            return random_number;
         }
     }
 }

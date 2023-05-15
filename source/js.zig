@@ -4,6 +4,9 @@ pub extern fn read_input([*]u8, u16, fn (u16) void) callconv(.Inline) void;
 pub extern fn JSLoad(u8, [*]u8, fn (u16) void) callconv(.Inline) void;
 pub extern fn output_message([*]u8, usize) void;
 pub extern fn log_message([*]u8, usize) void;
+pub extern fn random_bits(u8) usize;
+pub extern fn display_bitmap(u16, u16, u16) void;
+pub extern fn toggle_image(u16, u16) void;
 
 pub fn write(buffer: []u8) void {
     output_message(buffer.ptr, buffer.len);

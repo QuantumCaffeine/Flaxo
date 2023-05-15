@@ -1,4 +1,5 @@
 const BufferedWriter = @This();
+const io = @import("io.zig");
 const js = @import("js.zig");
 
 buffer: []u8,
@@ -16,7 +17,7 @@ pub fn writeChar(self: *BufferedWriter, char: u8) void {
     self.pos += 1;
 }
 
-pub fn writeString(self: *BufferedWriter, string: []u8) void {
+pub fn writeString(self: *BufferedWriter, string: []const u8) void {
     self.flushIfOverfull(self.pos + string.len);
     for (string) |char, i| {
         self.buffer[self.pos + i] = char;
