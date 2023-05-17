@@ -1,3 +1,5 @@
+const io = @import("js.zig");
+
 const Word = struct {
     word: []const u8,
     value: u16
@@ -13,7 +15,10 @@ pub fn init() void {
 
 pub fn append(word: []const u8, value: u16) void {
     words[pos] = Word{.word = word, .value = value};
+    // io.log.writeString(word);
+    // io.log.write(value);
     pos += 1;
+    //io.log.write(pos);
 }
 
 pub fn find(word: []const u8) ?u16 {

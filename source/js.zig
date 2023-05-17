@@ -6,7 +6,7 @@ pub extern fn log_char(char: u8) void;
 pub extern fn read_input([*]u8, usize, *const fn (u16) void) void;
 pub extern fn JSLoad(u8, [*]u8, *const fn (u16) void) void;
 pub extern fn output_message([*]u8, usize) void;
-pub extern fn log_message([*]u8, usize) void;
+pub extern fn log_message([*]const u8, usize) void;
 pub extern fn random_bits(u8) usize;
 pub extern fn display_bitmap(u16, u16, u16) void;
 pub extern fn toggle_image(u16, u16) void;
@@ -44,6 +44,9 @@ fn loadComplete(size: u16) void {
 pub const log = struct {
     pub fn write(n: usize) void {
         console_log(n);
+    }
+    pub fn writeString(string: []const u8) void {
+        log_message(string.ptr, string.len);
     }
 };
 

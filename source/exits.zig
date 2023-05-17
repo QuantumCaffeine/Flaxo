@@ -16,6 +16,13 @@ const reverse = [_]u8{ 0x00, 0x04, 0x06, 0x07, 0x01, 0x08, 0x02, 0x03, 0x05, 0x0
 var exits: [256][16]Exit = undefined;
 
 pub fn init(header: Header) void {
+    var r:usize = 0;
+    while (r < 256) : (r += 1) {
+        var e: usize = 0;
+        while (e < 16) : (e += 1) {
+            exits[r][e] = Exit{.room = 0, .flags = 0};
+        } 
+    }
     var table = Bytes.init(header.exit_table);
     var room: u8 = 1;
     while (true) {

@@ -75,12 +75,9 @@ fn read_input_wordV3() void {
         switch (word_type) {
             .Literal => |value| {
                 list.writeBig(u16, value);
-                io.log.write(value);
             },
             .Match => |matches| {
-                io.log.write(matches.get().len);
                 for (matches.get()) |match| {
-                    io.log.write(match);
                     list.writeBig(u16, match);
                 }
             }
@@ -246,7 +243,6 @@ pub fn run() ExecutionState {
                 in1 = code.read(u8); //draw image
             },
             0x17 => {
-                io.log.write(42);
                 const maxObject = readVariable();
                 const attributeVar = code.read(u8);
                 const parentVar = code.read(u8);

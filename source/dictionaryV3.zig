@@ -37,8 +37,8 @@ fn build(data: []u8) void {
     for (&input_matches) |*list| {
        list.size = 0;
     }
-    buildMatches();
     WordList.init(data);
+    buildMatches();
     for (WordList.word_list, 0..) |word, pos| {
         if (input_matches[pos].size > 0) {
             InputDictionary.append(word, @truncate(u16, pos));

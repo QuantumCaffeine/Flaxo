@@ -85,10 +85,15 @@ fn buildTableV3(data: []u8) u16 {
     var table_entry: u16 = 0;
     while (!table.eof()) : (table_entry += 1) {
         if (table.peek(u8) >= 0x80) {
-            table_entry += table.read(u7);
+            var skip_count = table.read(u7);
+            while (skip_count > 0) : (skip_count -= 1) {
+                message_table[table_entry].len = 0;
+                table_entry += 1;
+            }
+            message_table[table_entry].len = 0;
             continue;
         }
-        const length = readLength(u6, &table);        
+        const length = readLength(u6, &table);
         message_table[table_entry] = table.readSlice(length);
     }
     return table_entry;

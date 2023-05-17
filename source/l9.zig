@@ -60,12 +60,25 @@ fn handle_load(data: []u8) void {
     //WordList.init(header.dictionary);
     if (version <= 2) parserV1.init(header)
     else parserV3.init(header);
+    messages.printMessageV3(174, &io.output);
+        io.output.writeChar('\n');
+    messages.printMessageV3(422, &io.output);
+        io.output.writeChar('\n');
+    messages.printMessageV3(722, &io.output);
+        io.output.writeChar('\n');
+    messages.printMessageV3(1005, &io.output);
+        io.output.writeChar('\n');
+    messages.printMessageV3(1006, &io.output);
+        io.output.writeChar('\n');
+    messages.printMessageV3(1007, &io.output);
+        io.output.writeChar('\n');
     run();
     //  var test_message: u16 = 0;
     //  while (test_message < 4398) : (test_message += 1) {
     //      messages.printMessageV3(test_message, &io.output);
     //      io.output.flush();
     //  }
+
 }
 
 fn handle_input(input: []u8) void {
