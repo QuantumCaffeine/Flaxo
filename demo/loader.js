@@ -8,14 +8,46 @@ function addElement(eType, eClass, eContent, eParent) {
     return element
 }
 
+//let cursor_pos = 0;
+
 async function getInput() {
-    let styledSpace = '<span style="color:green;">&nbsp;</span>'
-    if (output.innerHTML.endsWith(' ')) {
-        output.innerHTML = output.innerHTML.slice(0, -1) + styledSpace
-    } else output.innerHTML += styledSpace
+    let styledSpace = '<span class="FlaxoInput">&nbsp;</span>'
+    console.log(output.innerText.slice(-2)+'x');
+    console.log(output.innerHTML.slice(-2)+'x');
+    if (output.innerText.endsWith(' ')) { 
+           output.innerText = output.innerText.slice(0, -1);
+           addElement('span', 'FlaxoInput', '&nbsp;', output);
+    }
+    // } else {
+    //     console.log('Failed');
+    // }
+        // + styledSpace;
+    // } else output.innerHTML += styledSpace
+    //if (!output.innerHTML.endsWith(' ')) output.innerHTML += ' '; 
     input = addElement('span', 'FlaxoInput', '', output)
     input.contentEditable = "true"
     input.spellcheck = false
+    // const config = {attributes: true, childList: true, subtree: true, characterData: true};
+    // const callback = (mutationList, observer) => {
+    //     for (const mutation of mutationList) {
+    //         console.log(mutation.type);
+    //     }
+    // };
+    // const observer = new MutationObserver(callback);
+    // observer.observe(input, config);
+    // input.innerText = '_';
+    // document.addEventListener('selectionchange', 
+    //     function (ev) {
+    //         console.log('Change');
+    //         let new_pos = document.getSelection().baseOffset;
+    //         console.log(new_pos);
+    //         if (new_pos != cursor_pos) {
+    //             input.innerText = input.innerText.slice(0, cursor_pos) + input.innerText.slice(cursor_pos + 1);
+    //             cursor_pos = new_pos;
+    //             input.innerText = input.innerText.slice(0, cursor_pos) + '_' + input.innerText.slice(cursor_pos);
+    //             document.getSelection().baseOffset = cursor_pos;
+    //         }
+    //     })
     input.focus()
 
     return new Promise((resolve) => {
@@ -36,8 +68,10 @@ let imports = {
         output_message: (ptr, len) => {
             let message = new TextDecoder().decode(mem.subarray(ptr, ptr + len))
             //console.log(message);
-            for (let chunk of message.split('\n'))
-                output = addElement('p', 'FlaxoOutput', chunk, display)
+            for (let chunk of message.split('\n')) {
+                if (chunk.trimEnd().length == 0) continue;
+                output = addElement('p', 'FlaxoOutput', chunk, display);
+            }
         },
         read_input: async (ptr, len, callback) => {
             let command = (await getInput()).trim()

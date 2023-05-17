@@ -1,4 +1,3 @@
-const mem = @import("std").mem;
 const Header = @import("Header.zig");
 const js = @import("js.zig");
 
@@ -8,10 +7,10 @@ pub var lists: [32][]u8 = undefined;
 var list_area: [0x800]u8 = undefined;
 
 pub fn init(header: Header) void {
-    for (list_area) |*byte| {
+    for (&list_area) |*byte| {
         byte.* = 0;
     }
-    for (header.list_table) |pos, n| {
+    for (header.list_table, 0..) |pos, n| {
         //js.console_log(pos);
         //js.console_log(n);
         lists[n] = if (pos >= 0x8000) list_area[pos - 0x8000 ..] else header.data[pos..];
@@ -19,5 +18,7 @@ pub fn init(header: Header) void {
 }
 
 pub fn clearVars() void {
-    mem.set(u16, &vars, 0);
+    for (&vars) |*v| {
+        v.* = 0;
+    }
 }

@@ -1,8 +1,7 @@
-
 const Bytes = @import("Bytes.zig");
 const Exit = @import("exits.zig").Exit;
 const l9 = @import("l9.zig");
-const io = @import("io.zig");
+const io = @import("js.zig");
 const js = @import("js.zig");
 const Header = @import("Header.zig");
 
@@ -11,14 +10,14 @@ var vars:[*]u16 = &l9.state.vars;
 var call_stack: StackOf(u16, 400) = .{};
 var version: u8 = 0;
 
-const ExecutionState = enum {
-    Running,
-    GetInput,
-    GetCharInput,
-    LoadGame,
-    Save,
-    Restore,
-    Stopped
+pub const ExecutionState = union(enum) {
+    Running:void,
+    GetInput:void,
+    GetCharInput:void,
+    LoadGame:u8,
+    Save:void,
+    Restore:void,
+    Stopped:void
 };
 
 const StandardOpcode = packed struct {
@@ -42,32 +41,9 @@ pub fn init(header: Header) void {
     version = header.version;
 }
 
-pub fn run() void {
-    var exec_state = ExecutionState.Running;
-    while (true) {
-        exec_state = switch (exec_state) {
-            .Running => execute(),
-            .GetInput => handle_input(),
-            .GetCharInput => get_char_input(),
-            .LoadGame => blk: {
-                const part = l9.state.lists[8][1];
-                var frame: @Frame(load_part) = async load_part(part);
-                await frame;
-                break :blk .Running;
-            },
-            .Save => .Stopped,
-            .Stopped => return,
-            .Restore => .Stopped,
-        };
-    }
-}
-
-fn handle_input() ExecutionState {
-    io.output.flush();
-    const input = await async io.input.read();
+pub fn handle_input(input: []u8) void {
     if (version <= 2) read_inputV1(input)
     else read_inputV3(input);
-    return .Running;
 }
 
 fn load_part(part: u8) void {
@@ -176,7 +152,7 @@ fn readTableAddress(table_start: u16, offset: u16) u16 {
     return table_entry;
 }
 
-fn execute() ExecutionState {
+pub fn run() ExecutionState {
     var in1:u16 = 0;
     var in2:u16 = 0;
     var out1:u8 = 0;
@@ -241,8 +217,8 @@ fn execute() ExecutionState {
             0x06 => if (executeExtendedOpcode()) |new_state| return new_state,
             0x07 => if (version <= 2 or l9.parserV3.empty) return .GetInput else read_input_wordV3(),
             0x08, 0x09 => vars[out1] = in1,
-            0x0A => vars[out1] += in1,
-            0x0B => vars[out1] -= in1,
+            0x0A => vars[out1] +%= in1,
+            0x0B => vars[out1] -%= in1,
             0x0F => {
                 const exit = l9.exits.get(in1, in2);
                 vars[out1] = exit.flags;
@@ -320,7 +296,15 @@ fn driver() ExecutionState {
     const arg = list.peek(u8);
     switch (opcode) {
         0x03 => return .GetCharInput,
-        0x0B => return .LoadGame, //If arg is zero, ask user for file name?
+        0x0B => {
+            return .{.LoadGame = arg};
+            // switch(arg) {
+            //     1 => return .LoadGame1,
+            //     2 => return .LoadGame2,
+            //     3 => return .LoadGame3,
+            //     else => {} //If arg is zero, ask user for file name?
+            // }
+        }, 
         0x0C => list.write(u16, @truncate(u16, random()>>16)),
         0x0E => list.write(u8, 0), // driver call 14
         0x16 => ram_save(arg),

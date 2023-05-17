@@ -7,14 +7,14 @@ version: u8,
 data: []u8,
 exit_table: []u8,
 code: []u8,
-list_table: [9]u16,
+list_table: *[9]u16,
 abbr_table: []u8 = undefined,
 message_table: []u8,
 word_table: []u8 = undefined,
 dictionary: []u8 = undefined,
 
 //Size: 0x20
-const HeaderV1 = packed struct {
+const HeaderV1 = extern struct {
     message_table: u16, //0x0D7D
     abbr_table: u16, //0x470E
     exit_table: u16, //0x0020
@@ -26,13 +26,14 @@ const HeaderV1 = packed struct {
 };
 
 //44-byte header
-const HeaderV3 = packed struct {
+const HeaderV3 = extern struct {
     file_length: u16,
     message_table: u16,
     message_table_length: u16,
     dictionary_start: u16,
     dictionary_length: u16,
-    padding1: u32, //Guessing this is table for manual protection
+    manual_start: u16,
+    manual_length: u16, //Guessing
     word_table: u16,
     padding2: u16, //Seems to be 0
     exit_table: u16,
@@ -45,13 +46,13 @@ const HeaderV3 = packed struct {
 pub fn init(version: u8, data: []u8) Header {
     var bytes = Bytes.init(data);
     if (version <= 2) {
-        var header_data = bytes.get(HeaderV1, 0);
+        var header_data = bytes.getSinglePtr(HeaderV1, 0);
         var abbr_table_start = header_data.abbr_table;
         if (version == 2) abbr_table_start -= 1;
         return Header{
             .version = version, //
             .data = data,
-            .list_table = bytes.get([9]u16, 0x08),
+            .list_table = header_data.lists[0..header_data.lists.len],//bytes.get([9]u16, 0x08),
             .abbr_table = data[abbr_table_start..],
             .message_table = data[header_data.message_table..],
             .exit_table = data[header_data.exit_table..],
@@ -59,12 +60,11 @@ pub fn init(version: u8, data: []u8) Header {
             .dictionary = data[header_data.dictionary_start..],
         };
     } else {
-        var header_data = bytes.get(HeaderV3, 0);
-        io.log.write(header_data.code_start);
+        var header_data = bytes.getSinglePtr(HeaderV3, 0);
         return Header{
             .version = version, //
             .data = data,
-            .list_table = bytes.get([9]u16, 0x16),
+            .list_table = header_data.lists[0..header_data.lists.len],//bytes.get([9]u16, 0x16),
             .message_table = data[header_data.message_table..header_data.message_table + header_data.message_table_length],
             .word_table = data[header_data.word_table..],
             .exit_table = data[header_data.exit_table..],

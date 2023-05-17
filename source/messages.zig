@@ -8,10 +8,10 @@ const WordList = @import("WordList.zig");
 const MessageWords = @import("MessageWords.zig");
 
 pub var message_table: [9000][]u8 = undefined;
-var num_messages: u16 = 0;
+pub var num_messages: u16 = 0;
 var num_abbreviations: u16 = 0;
 
-pub var print: fn (u16, *BufferedWriter) void = undefined;
+pub var print: *const fn (u16, *BufferedWriter) void = undefined;
 
 pub fn init(header: Header) void {
      if (header.version <= 2) initV1(header) else initV3(header);
@@ -20,10 +20,10 @@ pub fn init(header: Header) void {
 //// V1
 
 fn initV1(header: Header) void {
-    var buildTable = if (header.version == 1) buildTableV1 else buildTableV2;
+    var buildTable = if (header.version == 1) &buildTableV1 else &buildTableV2;
     num_abbreviations = buildTable(0, header.abbr_table);
     num_messages = buildTable(num_abbreviations, header.message_table);
-    print = if (header.version == 1) printV1 else printV2;
+    print = if (header.version == 1) &printV1 else &printV2;
 }
 
 fn buildTableV1(table_start: u16, data: []u8) u16 {
@@ -76,7 +76,7 @@ pub fn printV2(n: u16, writer: *BufferedWriter) void {
 fn initV3(header: Header) void {
     num_messages = buildTableV3(header.message_table);
     MessageWords.setup(header);
-    io.log.write(num_messages);
+    //io.log.write(num_messages);
     print = printMessageV3;
 }
 
@@ -100,13 +100,13 @@ pub fn printMessageV3(message: u16, writer: *BufferedWriter) void {
     var words = MessageWords.init(message_table[message]);
     while (words.next()) |word_data| {
         if (word_data.flags >= 6) {
-            if (word_data.word >= 0xF80) {
-                io.log.write(299);
-            }
-            if (word_data.word < 0xF80) {
-                io.log.writeString(WordList.word_list[word_data.word]);
-                io.log.write(word_data.flags);
-            }
+            //if (word_data.word >= 0xF80) {
+            //    io.log.write(299);
+            //}
+            //if (word_data.word < 0xF80) {
+            //    io.log.writeString(WordList.word_list[word_data.word]);
+            //    io.log.write(word_data.flags);
+            //}
         }
         if (word_data.word == 0xF80) break;
         if (word_data.word < 0xF80) {

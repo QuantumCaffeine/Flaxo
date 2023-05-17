@@ -57,7 +57,7 @@ fn buildV3(data: []u8) void {
     }
     buildMatches();
     WordList.init(data);
-    for (WordList.word_list) |word, pos| {
+    for (WordList.word_list, 0..) |word, pos| {
         if (input_matches[pos].size > 0) {
             InputDictionary.append(word, @truncate(u16, pos));
         }
@@ -65,7 +65,7 @@ fn buildV3(data: []u8) void {
 }
 
 fn buildMatches() void {
-    for (messages.message_table) |message, message_no| {
+    for (messages.message_table, 0..) |message, message_no| {
         var message_words = MessageWords.init(message);
         while (message_words.next()) |word_data| {
             var flags = word_data >> 12;

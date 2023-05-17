@@ -18,22 +18,40 @@ html {
     height: calc(100vh - 4em);
     margin: 2em auto;
     position: relative;
+    white-space: pre-wrap;
+    display: flex;
+    flex-direction: column;
+    /*justify-content: flex-end;*/
+    overflow-y: scroll;
 }
-.FlaxoBody {
+/* .FlaxoBody {
     overflow-y: scroll;
     scrollbar-color: #5a5a59 #282625;
     height: 100%;
     width: 35em;
     padding-right: 2em;
+    display: flex;
+    flex-direction: column;
+} */
+p {
+    margin-block-start: 0;
+}
+.FlaxoOutput:first-child {
+    margin-top: auto;
 }
 .FlaxoInput {
     outline: 0;
     border: 0;
-    min-width: 20px;
+    margin-left: 1em;
+    min-width: 200px;
     color: green;
+    caret-color: green;
     font-style: italic;
     vertical-align: bottom;
 }
+/* .FlaxoInput::before {
+    content: ' ';
+} */
 .FlaxoPicture {
     width: 35em;
     padding: 0;

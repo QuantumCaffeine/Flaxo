@@ -1,4 +1,4 @@
-pub fn FixedArrayBufferOf(comptime T: type, max_size: usize) type {
+pub fn FixedArrayBufferOf(comptime T: type, comptime max_size: usize) type {
     return struct {
         pos: usize = 0,
         data: [max_size]T = undefined,

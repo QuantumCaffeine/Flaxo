@@ -17,7 +17,7 @@ pub fn append(word: []const u8, value: u16) void {
 }
 
 pub fn find(word: []const u8) ?u16 {
-    for (word) |char, i| {
+    for (word, 0..) |char, i| {
         word_buffer[i] = char;
     }
     var upper_word = word_buffer[0..word.len];
@@ -30,7 +30,7 @@ pub fn find(word: []const u8) ?u16 {
 
 fn equal(first: []const u8, second: []const u8) bool {
     if (first.len > second.len) return false;
-    for (first) |char, i| {
+    for (first, 0..) |char, i| {
         if (toUpperChar(second[i]) != char) return false;
     }
     return true;

@@ -4,6 +4,7 @@ const messages = @import("messages.zig");
 const WordList = @import("WordList.zig");
 const MessageWords = @import("MessageWords.zig");
 const InputDictionary = @import("InputDictionary.zig");
+const io = @import("js.zig");
 
 pub const WordType = union(enum) {
     Literal: u8,
@@ -12,7 +13,7 @@ pub const WordType = union(enum) {
 
 pub const List = struct {
     size: u16 = 0,
-    data: [30]u16 = undefined,
+    data: [40]u16 = undefined,
 
     pub fn append(self: *List, value: u16) void {
         self.data[self.size] = value;
@@ -26,18 +27,19 @@ pub const List = struct {
 
 pub fn init(header: Header) void {
     InputDictionary.init();
-    build(header.dictionary);
+    const dict = header.dictionary;
+    build(dict);
 }
 
 var input_matches: [0xF80]List = undefined;
 
 fn build(data: []u8) void {
-    for (input_matches) |*list| {
-        list.size = 0;
+    for (&input_matches) |*list| {
+       list.size = 0;
     }
     buildMatches();
     WordList.init(data);
-    for (WordList.word_list) |word, pos| {
+    for (WordList.word_list, 0..) |word, pos| {
         if (input_matches[pos].size > 0) {
             InputDictionary.append(word, @truncate(u16, pos));
         }
@@ -45,7 +47,7 @@ fn build(data: []u8) void {
 }
 
 fn buildMatches() void {
-    for (messages.message_table) |message, message_no| {
+    for (messages.message_table[0..messages.num_messages], 0..) |message, message_no| {
         var message_words = MessageWords.init(message);
         while (message_words.next()) |word_data| {
             if ((word_data.word < 0xF80 and word_data.flags > 0)) {

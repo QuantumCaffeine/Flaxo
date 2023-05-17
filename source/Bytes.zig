@@ -1,14 +1,22 @@
+const js = @import("js.zig");
 const Bytes = @This();
 
 data: []u8,
 pos: u16 = 0,
 
 pub fn init(data: []u8) Bytes {
-    return Bytes{ .data = data };
+    const result = Bytes{ .data = data };
+    return result;
 }
 
 pub fn getPtr(self: Bytes, comptime T: type, pos: u16) [*]align(1) T {
-    return @ptrCast([*]align(1) T, self.data.ptr + pos);
+    const result = @ptrCast([*]align(1) T, self.data.ptr + pos);
+    return result;
+}
+
+pub fn getSinglePtr(self: Bytes, comptime T: type, pos: u16) *align(1) T {
+    const result = @ptrCast(*align(1) T, self.data.ptr + pos);
+    return result;
 }
 
 pub fn getSlice(self: Bytes, start: usize, end: usize) []u8 {
@@ -22,7 +30,8 @@ pub fn readSlice(self: *Bytes, length: u16) []u8 {
 }
 
 pub fn get(self: Bytes, comptime T: type, pos: u16) T {
-    return self.getPtr(T, pos)[0];
+    const ptr = self.getPtr(T, pos);
+    return ptr[0];
 }
 
 pub fn getBig(self: Bytes, comptime T: type, pos: u16) T {

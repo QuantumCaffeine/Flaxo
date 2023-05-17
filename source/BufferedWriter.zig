@@ -3,10 +3,10 @@ const io = @import("io.zig");
 const js = @import("js.zig");
 
 buffer: []u8,
-unbufferedWrite: fn ([]u8) void,
+unbufferedWrite: *const fn ([]u8) void,
 pos: usize = 0,
 
-pub fn init(buffer: []u8, unbufferedWriteFn: fn ([]u8) void) BufferedWriter {
+pub fn init(buffer: []u8, unbufferedWriteFn: *const fn ([]u8) void) BufferedWriter {
     return BufferedWriter{ .buffer = buffer, .unbufferedWrite = unbufferedWriteFn };
 }
 
@@ -19,7 +19,7 @@ pub fn writeChar(self: *BufferedWriter, char: u8) void {
 
 pub fn writeString(self: *BufferedWriter, string: []const u8) void {
     self.flushIfOverfull(self.pos + string.len);
-    for (string) |char, i| {
+    for (string, 0..) |char, i| {
         self.buffer[self.pos + i] = char;
     }
     self.pos += string.len;
