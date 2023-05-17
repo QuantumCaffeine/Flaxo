@@ -75,9 +75,12 @@ fn read_input_wordV3() void {
         switch (word_type) {
             .Literal => |value| {
                 list.writeBig(u16, value);
+                io.log.write(value);
             },
             .Match => |matches| {
+                io.log.write(matches.get().len);
                 for (matches.get()) |match| {
+                    io.log.write(match);
                     list.writeBig(u16, match);
                 }
             }
@@ -109,6 +112,9 @@ fn StackOf(comptime T: type, comptime size: u16) type {
 
         fn clear(self: *Self) void {
             self.pos = 0;
+        }
+        fn empty(self: Self) bool {
+            return self.pos == 0;
         }
     };
 }
@@ -160,7 +166,7 @@ pub fn run() ExecutionState {
     var address:u16 = 0;
 
     var count: u16 = 0;
-    while (count < 10000) : (count += 1) {
+    while (count < 20000) : (count += 1) {
         const opcode = code.read(StandardOpcode);
 
         if (opcode.is_list) {
@@ -240,8 +246,11 @@ pub fn run() ExecutionState {
                 in1 = code.read(u8); //draw image
             },
             0x17 => {
-                io.log.write(299); //Object table
-                return .Stopped;
+                io.log.write(42);
+                const maxObject = readVariable();
+                const attributeVar = code.read(u8);
+                const parentVar = code.read(u8);
+                nextObject(maxObject, attributeVar, parentVar);
             },
             0x1C => io.output.writeString(l9.parserV3.current_word),
             else => return illegal(opcode.value),
@@ -315,6 +324,92 @@ fn driver() ExecutionState {
         else => {},
     }
     return .Running;
+}
+
+var searchdepth: u16 = 0;
+var numobjectfound: u16 = 0;
+var object: u16 = 0;
+var initAttribute: u16 = 0;
+var scratch: [32]u8 = [_]u8{0}**32;
+var object_stack = StackOf(u16, 64){};
+
+fn initgetobj() void {
+    numobjectfound = 0;
+    object = 0;
+    scratch = [_]u8{0}**32;
+}
+
+fn getParent(obj: u16) u8 {
+    return l9.state.lists[1][obj];
+}
+
+fn getAttributes(obj: u16) u8 {
+    return l9.state.lists[2][obj];
+}
+
+fn setScratch(entry: u16, value: u8) void {
+    scratch[@truncate(u5, entry)] = value;
+}
+
+fn setObjectOutput(attributeVar: u8, parentVar: u8, attribute: u16, parent: u16) void {
+    vars[attributeVar] = attribute;
+    vars[parentVar] = parent;
+    vars[code.read(u8)] = object;
+    vars[code.read(u8)] = numobjectfound;
+    vars[code.read(u8)] = searchdepth;
+}
+
+fn nextObject(maxObject: u16, attributeVar: u8, parentVar: u8) void {
+    var attribute = vars[attributeVar];
+    var parent = vars[parentVar];
+    while (true) {
+        if (attribute == 0 and parent == 0) {
+            object_stack.clear();
+            searchdepth = 0;
+            initgetobj();
+            break;
+        }
+        if (numobjectfound == 0) initAttribute = attribute;
+        while (true) {
+            object += 1;
+            if (parent == getParent(object)) {
+                const testAttribute = getAttributes(object) & 0x1F;
+                if (testAttribute != attribute) {
+                    if (testAttribute == 0 or attribute == 0) continue;
+                    if (attribute != 0x1F) {
+                        setScratch(testAttribute, testAttribute);
+                        continue;
+                    }
+                    attribute = testAttribute;
+                }
+                numobjectfound += 1;
+                object_stack.push(object | (0x1F << 8));
+                setObjectOutput(attributeVar, parentVar, attribute, parent);
+                return;
+            }
+            if (object > maxObject) break;
+        }
+        if (initAttribute == 0x1F) {
+            setScratch(attribute, 0);
+            for (scratch) |attr| {
+                if (attr != 0) object_stack.push(parent | (@as(u16, attr) << 8));
+            }
+        }
+        if (!object_stack.empty()) {
+            const next = object_stack.pop();
+            parent = next & 0xFF;
+            attribute = next >> 8;
+        } else {
+            parent = 0;
+            attribute = 0;
+        }
+        numobjectfound = 0;
+        if (attribute == 0x1F) searchdepth += 1;
+        initgetobj();
+        if (parent == 0) break;
+    }
+    object = 0;
+    setObjectOutput(attributeVar, parentVar, 0, 0);
 }
 
 fn lenslok_display(list: *Bytes) void {

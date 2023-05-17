@@ -13,7 +13,7 @@ pub const WordType = union(enum) {
 
 pub const List = struct {
     size: u16 = 0,
-    data: [40]u16 = undefined,
+    data: [50]u16 = undefined,
 
     pub fn append(self: *List, value: u16) void {
         self.data[self.size] = value;
