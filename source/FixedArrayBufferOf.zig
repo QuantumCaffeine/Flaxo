@@ -1,3 +1,5 @@
+const io = @import("js.zig");
+
 pub fn FixedArrayBufferOf(comptime T: type, comptime max_size: usize) type {
     return struct {
         pos: usize = 0,
@@ -14,8 +16,12 @@ pub fn FixedArrayBufferOf(comptime T: type, comptime max_size: usize) type {
             return self.pos == self.data.len;
         }
 
-        pub fn get(self: Self) []const T {
+        pub fn get(self: *Self) [] T {
             return self.data[0..self.pos];
+        }
+
+        pub fn reset(self: *Self) void {
+            self.pos = 0;
         }
     };
 }

@@ -12,8 +12,8 @@ function addElement(eType, eClass, eContent, eParent) {
 
 async function getInput() {
     let styledSpace = '<span class="FlaxoInput">&nbsp;</span>'
-    console.log(output.innerText.slice(-2)+'x');
-    console.log(output.innerHTML.slice(-2)+'x');
+    //console.log(output.innerText.slice(-2)+'x');
+    //console.log(output.innerHTML.slice(-2)+'x');
     if (output.innerText.endsWith(' ')) { 
            output.innerText = output.innerText.slice(0, -1);
            addElement('span', 'FlaxoInput', '&nbsp;', output);

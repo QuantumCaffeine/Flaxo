@@ -120,7 +120,7 @@ pub fn printMessageV3(message: u16, writer: *BufferedWriter) void {
             writer.writeString(WordList.word_list[word_data.word]);
         } else {
             in_word = false;
-            var char = @truncate(u7, word_data.word);
+            var char: u7 = @truncate(word_data.word);
             if (char == 13) char = 10;
             if (word_data.flags&0x04 != 0) {
                 io.log.write(399);

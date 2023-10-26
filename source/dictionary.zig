@@ -59,7 +59,7 @@ fn buildV3(data: []u8) void {
     WordList.init(data);
     for (WordList.word_list, 0..) |word, pos| {
         if (input_matches[pos].size > 0) {
-            InputDictionary.append(word, @truncate(u16, pos));
+            InputDictionary.append(word, @truncate(pos));
         }
     }
 }
@@ -71,7 +71,7 @@ fn buildMatches() void {
             var flags = word_data >> 12;
             var word = word_data & 0xFFF;
             if ((word < 0xF80 and flags > 0)) {
-                input_matches[word].append((flags << 13) | @truncate(u12, message_no));
+                input_matches[word].append((flags << 13) | @as(u12, @truncate(message_no)));
             }
         }
     }
@@ -85,7 +85,7 @@ fn toInt(word: []u8) ?u8 {
         number = 10*number + (char - '0');
     }
     if (number > 255) return null;
-    return @truncate(u8, number);
+    return @truncate(number);
 }
 
 //// Utility
@@ -96,7 +96,7 @@ pub fn lookup(word: []u8) WordType {
     }
     if (InputDictionary.find(word)) |value| {
         if (version > 2) return WordType{.MatchV3 = &input_matches[value]}
-        else return WordType{.MatchV1 = @truncate(u8, value)};
+        else return WordType{.MatchV1 = @truncate(value)};
     }
     const as_number = toInt(word);
     return if (as_number) |value| WordType{.LiteralV3 = value}

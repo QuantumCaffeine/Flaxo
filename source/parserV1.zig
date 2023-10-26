@@ -2,8 +2,10 @@ const Header = @import("Header.zig");
 const Bytes = @import("Bytes.zig");
 const dictionary = @import("dictionaryV1.zig");
 const FixedArrayBufferOf = @import("FixedArrayBufferOf.zig").FixedArrayBufferOf;
+const io = @import("js.zig");
 
 var buffer: Bytes = undefined;
+var words = FixedArrayBufferOf(u16, 3){};
 
 pub fn init(header: Header) void {
     dictionary.init(header);
@@ -11,7 +13,7 @@ pub fn init(header: Header) void {
 
 pub fn parseWords(input: [] u8) []const u16 {
     buffer = Bytes.init(input);
-    var words = FixedArrayBufferOf(u16, 3){};
+    words.reset();
     while (!words.full()) {
         if (getWord()) |word| {
             if (dictionary.lookup(word)) |value| {

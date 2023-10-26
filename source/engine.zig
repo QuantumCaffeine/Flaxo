@@ -57,7 +57,7 @@ fn read_inputV1(input: []u8) void {
         const variable = code.read(u8);
         vars[variable] = value;
     }
-    const num_words: u8 = @truncate(u8, words.len);
+    const num_words: u8 = @truncate(words.len);
     code.seekBy(3 - num_words);
     const variable = code.read(u8);
     vars[variable] = num_words;
@@ -146,7 +146,7 @@ fn ret() void {
 fn readAddress(relative: bool) u16 {
     if (relative) {
         const offset = @as(i16, code.read(i8));
-        return code.pos +% @bitCast(u16, offset) - 1;
+        return code.pos +% @as(u16, @bitCast(offset)) - 1;
     } else return code.read(u16);
 }
 
@@ -167,7 +167,7 @@ pub fn run() ExecutionState {
         const opcode = code.read(StandardOpcode);
 
         if (opcode.is_list) {
-            executeListOpcode(@bitCast(ListOpcode, opcode));
+            executeListOpcode(@bitCast(opcode));
             continue;
         }
         switch (opcode.value) {
@@ -260,10 +260,10 @@ fn executeListOpcode(opcode: ListOpcode) void {
     const in2 = code.read(u8);
     const list = l9.state.lists[opcode.list_num - 1];
     switch (opcode.opcode) {
-        0 => list[in1] = @truncate(u8, vars[in2]),
+        0 => list[in1] = @truncate(vars[in2]),
         1 => vars[in2] = list[vars[in1]],
         2 => vars[in2] = list[in1],
-        3 => list[vars[in1]] = @truncate(u8, vars[in2]),
+        3 => list[vars[in1]] = @truncate(vars[in2]),
     }
 }
 
@@ -283,7 +283,7 @@ fn executeExtendedOpcode() ?ExecutionState {
         },
         0x02 => {
             const variable = code.read(u8);
-            vars[variable] = @truncate(u8, random());
+            vars[variable] = @truncate(random());
         },
         0x03 => return .Save,
         0x04 => return .Restore,
@@ -310,7 +310,7 @@ fn driver() ExecutionState {
             //     else => {} //If arg is zero, ask user for file name?
             // }
         }, 
-        0x0C => list.write(u16, @truncate(u16, random()>>16)),
+        0x0C => list.write(u16, @truncate(random()>>16)),
         0x0E => list.write(u8, 0), // driver call 14
         0x16 => ram_save(arg),
         0x17 => ram_restore(arg),
@@ -344,7 +344,7 @@ fn getAttributes(obj: u16) u8 {
 }
 
 fn setScratch(entry: u16, value: u8) void {
-    scratch[@truncate(u5, entry)] = value;
+    scratch[@as(u5, @truncate(entry))] = value;
 }
 
 fn setObjectOutput(attributeVar: u8, parentVar: u8, attribute: u16, parent: u16) void {

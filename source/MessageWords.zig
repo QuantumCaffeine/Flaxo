@@ -22,7 +22,7 @@ pub fn init(message: []u8) Self {
 
 pub fn next(self: *Self) ?OutputWord {
     if (self.bytes.eof()) return null;
-    const word = if (self.bytes.peek(u8) >= 0x80) @truncate(u15, self.bytes.readBig(u16))
+    const word: u16 = if (self.bytes.peek(u8) >= 0x80) self.bytes.readBig(u16) & 0x7FFF
     else word_table.getBig(u16, self.bytes.read(u8)<<1);
-    return @bitCast(OutputWord, word);
+    return @bitCast(word);
 }

@@ -1,0 +1,26 @@
+CPC Layout
+----------
+Start offset: 128       //Total blocks = 320*200//64 = 1000
+off_scr = 8128  //colours1_offset
+off_bg = 9128   //background_offset
+off_col = 9144  //colours2_offset
+compressed = no
+
+BBC Layout
+----------
+Title
+-----
+May or may not have offset of 10
+
+colours1_offset = 8000
+background_offset = 9001  //1 byte ahead of CPC
+colours2_offset = 9016
+
+Regular
+-------
+May or may not have an offset of 10
+//Total blocks = 320*136//64 = 680
+colours1_offset = 5440
+colours2_offset = 6120
+background_offset = 6461 //Again, 1 byte ahead of CPC
+

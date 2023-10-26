@@ -33,19 +33,12 @@ fn run() void {
             },
             .GetCharInput => {},
             else => |value| {
-                io.log.write(@enumToInt(value));
+                io.log.write(@intFromEnum(value));
                 break;
             }
         }
     }
 }
-
-            // .LoadGame => blk: {
-            //     const part = l9.state.lists[8][1];
-            //     var frame: @Frame(load_part) = async load_part(part);
-            //     await frame;
-            //     break :blk .Running;
-            // },
 
 pub fn load(part:u8) void {
     io.load(part, &buffer, &handle_load);
@@ -57,28 +50,9 @@ fn handle_load(data: []u8) void {
     exits.init(header);
     state.init(header);
     engine.init(header);
-    //WordList.init(header.dictionary);
     if (version <= 2) parserV1.init(header)
     else parserV3.init(header);
-    messages.printMessageV3(174, &io.output);
-        io.output.writeChar('\n');
-    messages.printMessageV3(422, &io.output);
-        io.output.writeChar('\n');
-    messages.printMessageV3(722, &io.output);
-        io.output.writeChar('\n');
-    messages.printMessageV3(1005, &io.output);
-        io.output.writeChar('\n');
-    messages.printMessageV3(1006, &io.output);
-        io.output.writeChar('\n');
-    messages.printMessageV3(1007, &io.output);
-        io.output.writeChar('\n');
     run();
-    //  var test_message: u16 = 0;
-    //  while (test_message < 4398) : (test_message += 1) {
-    //      messages.printMessageV3(test_message, &io.output);
-    //      io.output.flush();
-    //  }
-
 }
 
 fn handle_input(input: []u8) void {

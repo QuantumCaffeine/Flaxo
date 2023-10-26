@@ -31,7 +31,7 @@ pub fn writeNumber(self: *BufferedWriter, n: u16) void {
     var digit_value: u8 = 1;
     while (10 * digit_value <= num) digit_value *= 10;
     while (digit_value > 0) {
-        var digit: u8 = @truncate(u8, num / digit_value);
+        var digit: u8 = @truncate(num / digit_value);
         self.writeChar(digitToAscii(digit));
         num -= digit * digit_value;
         digit_value /= 10;

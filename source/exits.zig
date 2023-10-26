@@ -27,7 +27,7 @@ pub fn init(header: Header) void {
     var room: u8 = 1;
     while (true) {
         const entry = table.read(TableEntry);
-        if (@bitCast(u16, entry) == 0) break;
+        if (@as(u16, @bitCast(entry)) == 0) break;
         exits[room][entry.exit] = Exit{ .flags = entry.flags, .room = entry.dest };
         if ((entry.flags & 0x1) == 1) {
             const reverse_exit = reverse[entry.exit];

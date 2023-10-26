@@ -1,0 +1,28 @@
+PC Name
+-------
+1 -- 30.pic, with 30 being title
+
+Amiga, Mac, and ST1 Names
+----------
+1 -- 29, with title being either title or 30
+
+C64 Name
+--------
+pic(num), or "title mpic" for title
+
+BBC Name
+--------
+"P.Title" or "title" for title pic
+"P.Pic(num)" or "pic(num)" for others
+
+CPC Name
+--------
+"title.pic", "1.pic" or "allpics.pic"
+
+ST2 Name
+--------
+1 -- 30.squ, with 30 being title
+
+If includes "title" -> pic 30
+If "allpics" -> CPC picture set
+Otherwise, pull number from end

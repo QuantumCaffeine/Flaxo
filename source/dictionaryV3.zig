@@ -41,7 +41,7 @@ fn build(data: []u8) void {
     buildMatches();
     for (WordList.word_list, 0..) |word, pos| {
         if (input_matches[pos].size > 0) {
-            InputDictionary.append(word, @truncate(u16, pos));
+            InputDictionary.append(word, @truncate(pos));
         }
     }
 }
@@ -51,7 +51,7 @@ fn buildMatches() void {
         var message_words = MessageWords.init(message);
         while (message_words.next()) |word_data| {
             if ((word_data.word < 0xF80 and word_data.flags > 0)) {
-                input_matches[word_data.word].append((@as(u16, word_data.flags) << 13) | @truncate(u12, message_no));
+                input_matches[word_data.word].append((@as(u16, word_data.flags) << 13) | @as(u12, @truncate(message_no)));
             }
         }
     }
@@ -76,5 +76,5 @@ fn toInt(word: []u8) ?u8 {
         number = 10*number + (char - '0');
     }
     if (number > 255) return null;
-    return @truncate(u8, number);
+    return @truncate(number);
 }

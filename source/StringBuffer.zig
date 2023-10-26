@@ -13,7 +13,7 @@ pub fn begin(self: *Self) void {
 }
 
 pub fn append(self: *Self, value: usize) void {
-    self.buffer[self.pos] = @truncate(u7, value);
+    self.buffer[self.pos] = @as(u7, @truncate(value));
     self.pos += 1;
 }
 

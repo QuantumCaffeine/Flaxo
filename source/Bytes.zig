@@ -10,12 +10,12 @@ pub fn init(data: []u8) Bytes {
 }
 
 pub fn getPtr(self: Bytes, comptime T: type, pos: u16) [*]align(1) T {
-    const result = @ptrCast([*]align(1) T, self.data.ptr + pos);
+    const result: [*]align(1) T = @ptrCast(self.data.ptr + pos);
     return result;
 }
 
 pub fn getSinglePtr(self: Bytes, comptime T: type, pos: u16) *align(1) T {
-    const result = @ptrCast(*align(1) T, self.data.ptr + pos);
+    const result: *align(1) T = @ptrCast(self.data.ptr + pos);
     return result;
 }
 
@@ -80,7 +80,7 @@ pub fn seek(self: *Bytes, pos: u16) void {
 }
 
 pub fn seekBy(self: *Bytes, offset: i16) void {
-    self.pos += @bitCast(u16, offset);
+    self.pos += @bitCast(offset);
 }
 
 pub fn eof(self: *Bytes) bool {

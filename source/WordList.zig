@@ -15,7 +15,7 @@ const CharReader = struct {
             self.bits += 8;
         }
         self.bits -= bits_needed;
-        return @truncate(T, self.buffer >> self.bits);
+        return @truncate(self.buffer >> self.bits);
     }
 
     fn eof(self: *CharReader) bool {
