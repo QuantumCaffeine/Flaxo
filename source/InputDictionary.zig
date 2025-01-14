@@ -22,7 +22,7 @@ pub fn find(word: []const u8) ?u16 {
     for (word, 0..) |char, i| {
         word_buffer[i] = char;
     }
-    var upper_word = word_buffer[0..word.len];
+    const upper_word = word_buffer[0..word.len];
     toUpper(upper_word);
     for (words) |entry| {
         if (equal(upper_word, entry.word)) return entry.value;

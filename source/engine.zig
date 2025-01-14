@@ -52,7 +52,7 @@ fn load_part(part: u8) void {
 }
 
 fn read_inputV1(input: []u8) void {
-    var words = l9.parserV1.parseWords(input);
+    const words = l9.parserV1.parseWords(input);
     for (words) |value| {
         const variable = code.read(u8);
         vars[variable] = value;

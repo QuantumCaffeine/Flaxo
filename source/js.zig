@@ -3,8 +3,8 @@ var output_buffer: [1000]u8 = undefined;
 
 pub extern fn console_log(value: usize) void;
 pub extern fn log_char(char: u8) void;
-pub extern fn read_input([*]u8, usize, *const fn (u16) void) void;
-pub extern fn JSLoad(u8, [*]u8, *const fn (u16) void) void;
+pub extern fn read_input([*]u8, usize, *const fn (u16) callconv(.C) void) void;
+pub extern fn JSLoad(u8, [*]u8, *const fn (u16) callconv(.C) void) void;
 pub extern fn output_message([*]u8, usize) void;
 pub extern fn log_message([*]const u8, usize) void;
 pub extern fn random_bits(u8) usize;
@@ -24,7 +24,7 @@ pub fn read(buffer: []u8, callback: *const fn([]u8) void) void {
     read_input(buffer.ptr, buffer.len, &readComplete);
 }
 
-fn readComplete(bytes_read: u16) void {
+fn readComplete(bytes_read: u16) callconv(.C) void {
     read_callback(read_buffer[0..bytes_read]);
 }
 
@@ -37,7 +37,7 @@ pub fn load(part: u8, buffer: [*]u8, callback: *const fn([]u8) void) void {
     JSLoad(part, buffer, &loadComplete);
 }
 
-fn loadComplete(size: u16) void {
+fn loadComplete(size: u16) callconv(.C) void {
     load_callback(load_buffer[0..size]);
 }
 

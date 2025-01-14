@@ -20,7 +20,7 @@ pub fn init(header: Header) void {
 //// V1
 
 fn initV1(header: Header) void {
-    var buildTable = if (header.version == 1) &buildTableV1 else &buildTableV2;
+    const buildTable = if (header.version == 1) &buildTableV1 else &buildTableV2;
     num_abbreviations = buildTable(0, header.abbr_table);
     num_messages = buildTable(num_abbreviations, header.message_table);
     print = if (header.version == 1) &printV1 else &printV2;

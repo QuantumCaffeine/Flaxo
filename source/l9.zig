@@ -45,7 +45,7 @@ pub fn load(part:u8) void {
 }
 
 fn handle_load(data: []u8) void {
-    var header = Header.init(version, data);
+    const header = Header.init(version, data);
     messages.init(header);
     exits.init(header);
     state.init(header);

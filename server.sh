@@ -1,3 +1,2 @@
 #!/usr/bin/bash
-cd ./demo
-python -m http.server
+python -m http.server -d ./demo

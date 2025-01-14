@@ -68,8 +68,8 @@ fn buildMatches() void {
     for (messages.message_table, 0..) |message, message_no| {
         var message_words = MessageWords.init(message);
         while (message_words.next()) |word_data| {
-            var flags = word_data >> 12;
-            var word = word_data & 0xFFF;
+            const flags = word_data >> 12;
+            const word = word_data & 0xFFF;
             if ((word < 0xF80 and flags > 0)) {
                 input_matches[word].append((flags << 13) | @as(u12, @truncate(message_no)));
             }
